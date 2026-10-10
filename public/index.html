@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PK Roulette — Discord Casino</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top, #1a1d29 0%, #0d0f16 100%);
+    color: #eaeaea; min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+  h1 { color: #fff; }
+  .card {
+    background: #181b25; border: 1px solid #262a38; border-radius: 14px;
+    padding: 22px; margin-bottom: 20px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .btn {
+    background: #5865F2; color: #fff; border: none;
+    padding: 12px 22px; border-radius: 8px; font-size: 16px;
+    cursor: pointer; transition: 0.15s; text-decoration: none;
+    display: inline-block;
+  }
+  .btn:hover { background: #4752C4; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-red    { background: #d63031; }
+  .btn-red:hover { background: #b02324; }
+  .btn-black  { background: #2d3436; }
+  .btn-black:hover { background: #1e2223; }
+  .btn-green  { background: #00b894; }
+  .btn-green:hover { background: #009b7c; }
+  .btn-ghost  { background: transparent; border: 1px solid #3a3f52; }
+
+  /* Логин */
+  .login-wrap { text-align: center; padding: 80px 20px; }
+  .login-wrap h1 { font-size: 42px; margin-bottom: 8px; }
+  .login-wrap p { color: #8b8f9e; margin-bottom: 32px; }
+  .login-wrap .logo { font-size: 80px; margin-bottom: 20px; }
+
+  /* Профиль */
+  .profile { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; background: #262a38; }
+  .profile-info { flex: 1; min-width: 200px; }
+  .username { font-size: 20px; font-weight: 600; color: #fff; }
+  .meta { color: #8b8f9e; font-size: 14px; margin-top: 4px; }
+  .balance {
+    font-size: 28px; font-weight: 700; color: #ffd93d;
+    text-align: right;
+  }
+  .balance small { color: #8b8f9e; font-size: 13px; font-weight: 400; display: block; }
+
+  /* Игра */
+  .game-grid {
+    display: grid; grid-template-columns: 1fr 340px; gap: 20px;
+  }
+  @media (max-width: 800px) { .game-grid { grid-template-columns: 1fr; } }
+
+  .wheel {
+    width: 100%; aspect-ratio: 1; max-width: 380px; margin: 0 auto;
+    border-radius: 50%; position: relative;
+    background: conic-gradient(#d63031 0deg 175deg, #00b894 175deg 185deg, #2d3436 185deg 360deg);
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 0 40px rgba(88,101,242,0.3);
+    transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 1);
+  }
+  .wheel::after {
+    content: attr(data-result);
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px; height: 120px; border-radius: 50%;
+    background: #0d0f16; border: 3px solid #262a38;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 42px; font-weight: 800; color: #fff;
+  }
+  .wheel.spinning { animation: spin 3s cubic-bezier(0.17, 0.67, 0.12, 1); }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(1800deg); }
+  }
+
+  /* Ставки */
+  .bet-row { display: flex; gap: 10px; margin-top: 16px; }
+  .bet-btn { flex: 1; padding: 18px; font-size: 15px; font-weight: 600; }
+  .amount-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .amount-btn {
+    flex: 1; min-width: 70px; padding: 10px; font-size: 14px;
+    background: #262a38; color: #eaeaea; border: 1px solid #3a3f52;
+    border-radius: 8px; cursor: pointer;
+  }
+  .amount-btn:hover { background: #333849; }
+  .amount-btn.active { background: #5865F2; border-color: #5865F2; }
+
+  input[type=number] {
+    width: 100%; padding: 12px; background: #0d0f16; color: #fff;
+    border: 1px solid #3a3f52; border-radius: 8px; font-size: 16px;
+    margin-top: 12px;
+  }
+
+  /* Лидерборд */
+  .lb-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid #262a38;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank {
+    font-weight: 700; width: 32px; text-align: center;
+    color: #8b8f9e; font-size: 15px;
+  }
+  .lb-rank.gold   { color: #ffd93d; }
+  .lb-rank.silver { color: #c0c0c0; }
+  .lb-rank.bronze { color: #cd7f32; }
+  .lb-avatar { width: 32px; height: 32px; border-radius: 50%; background: #262a38; }
+  .lb-name { flex: 1; font-weight: 500; }
+  .lb-profit { font-weight: 600; }
+  .positive { color: #00b894; }
+  .negative { color: #d63031; }
+
+  .status {
+    margin-top: 12px; min-height: 22px; text-align: center;
+    font-weight: 600;
+  }
+  .toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: #262a38; padding: 12px 24px; border-radius: 8px;
+    border: 1px solid #3a3f52; opacity: 0; transition: opacity 0.3s;
+    pointer-events: none; z-index: 1000;
+  }
+  .toast.show { opacity: 1; }
+  .disclaimer {
+    text-align: center; color: #6b7085; font-size: 12px;
+    margin-top: 30px; padding: 16px;
+  }
+</style>
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<!-- ЭКРАН ВХОДА -->
+<div id="loginScreen" class="login-wrap" style="display:none;">
+  <div class="logo">🎰</div>
+  <h1>PK Roulette</h1>
+  <p>Бесплатная рулетка с Discord-входом. При входе — 10 000 000 PK.<br>
+     Реальные деньги сюда положить невозможно.</p>
+  <a href="/auth/discord/login" class="btn">Войти через Discord</a>
+</div>
+
+<!-- ЭКРАН ИГРЫ -->
+<div id="gameScreen" class="container" style="display:none;">
+  <div class="card">
+    <div class="profile">
+      <img id="avatar" class="avatar" alt="">
+      <div class="profile-info">
+        <div id="username" class="username">…</div>
+        <div id="meta" class="meta">…</div>
+      </div>
+      <div>
+        <div id="balance" class="balance">…<small>баланс PK</small></div>
+      </div>
+      <button class="btn btn-ghost" onclick="logout()">Выйти</button>
+    </div>
+  </div>
+
+  <div class="game-grid">
+    <div class="card">
+      <div class="wheel" id="wheel" data-result="?">?</div>
+      <div id="status" class="status"></div>
+      <div class="bet-row">
+        <button class="btn btn-red bet-btn"   onclick="spin('red')">КРАСНОЕ ×2</button>
+        <button class="btn btn-black bet-btn" onclick="spin('black')">ЧЁРНОЕ ×2</button>
+        <button class="btn btn-green bet-btn" onclick="spin('green')">ЗЕЛЁНОЕ ×36</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3 style="margin-top:0;">Ставка</h3>
+        <div class="amount-row">
+          <button class="amount-btn" data-amt="1000">1K</button>
+          <button class="amount-btn" data-amt="10000">10K</button>
+          <button class="amount-btn" data-amt="100000">100K</button>
+          <button class="amount-btn active" data-amt="1000000">1M</button>
+        </div>
+        <input id="betAmount" type="number" value="1000000" min="100" step="100">
+        <button id="refillBtn" class="btn btn-ghost" style="width:100%;margin-top:12px;display:none;" onclick="refill()">
+          🎁 Получить 10 000 000 PK
+        </button>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">🏆 Топ игроков</h3>
+        <div id="leaderboard">Загрузка…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠️ Это развлекательная игра с виртуальной валютой PK. Реальные деньги сюда добавить нельзя, вывести тоже нельзя.
+  </div>
+</div>
+
+<script>
+let currentUser = null;
+let spinning = false;
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function avatarUrl(id, hash) {
+  return hash
+    ? `https://cdn.discordapp.com/avatars/${id}/${hash}.png?size=64`
+    : `https://cdn.discordapp.com/embed/avatars/0.png`;
+}
+
+async function checkAuth() {
+  const res = await fetch('/api/me');
+  const data = await res.json();
+  if (!data.loggedIn) {
+    document.getElementById('loginScreen').style.display = 'block';
+    document.getElementById('gameScreen').style.display = 'none';
+    return;
+  }
+  currentUser = data.user;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('gameScreen').style.display = 'block';
+  document.getElementById('avatar').src = avatarUrl(currentUser.id, currentUser.avatar);
+  document.getElementById('username').textContent = currentUser.username;
+  document.getElementById('meta').textContent =
+    `#${currentUser.rank} из ${currentUser.totalPlayers} • Чистый выигрыш: ${formatPK(currentUser.netProfit)}`;
+  updateBalance();
+  loadLeaderboard();
+}
+
+function updateBalance() {
+  document.getElementById('balance').innerHTML =
+    `${formatPK(currentUser.balance)}<small>баланс PK</small>`;
+  const refill = document.getElementById('refillBtn');
+  refill.style.display = currentUser.balance <= 0 ? 'block' : 'none';
+}
+
+function formatPK(n) {
+  const sign = n < 0 ? '-' : '';
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return sign + (abs / 1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return sign + (abs / 1e6).toFixed(2) + 'M';
+  if (abs >= 1e3) return sign + (abs / 1e3).toFixed(2) + 'K';
+  return sign + abs.toLocaleString('ru-RU');
+}
+
+document.querySelectorAll('.amount-btn').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.amount-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('betAmount').value = b.dataset.amt;
+  };
+});
+
+async function spin(color) {
+  if (spinning) return;
+  const amount = Math.floor(Number(document.getElementById('betAmount').value));
+  if (!amount || amount < 100) return toast('Минимальная ставка 100 PK');
+  if (amount > currentUser.balance) return toast('Недостаточно PK');
+
+  spinning = true;
+  const wheel = document.getElementById('wheel');
+  const status = document.getElementById('status');
+  status.textContent = '';
+  wheel.dataset.result = '?';
+  wheel.classList.remove('spinning');
+  void wheel.offsetWidth; // reflow
+  wheel.classList.add('spinning');
+
+  try {
+    const res = await fetch('/api/spin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ color, amount }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      spinning = false;
+      return toast(data.error || 'Ошибка');
+    }
+
+    setTimeout(() => {
+      wheel.classList.remove('spinning');
+      wheel.dataset.result = data.number;
+      currentUser.balance = data.balance;
+      currentUser.netProfit += data.netChange;
+      currentUser.totalWon += data.won ? data.payout : 0;
+      currentUser.totalBet += data.bet;
+
+      if (data.won) {
+        status.innerHTML = `<span class="positive">🎉 Выигрыш! +${formatPK(data.netChange)} PK</span>`;
+      } else {
+        status.innerHTML = `<span class="negative">😢 Проигрыш ${formatPK(data.netChange)} PK</span>`;
+      }
+      updateBalance();
+      loadLeaderboard();
+      spinning = false;
+    }, 3000);
+  } catch (e) {
+    spinning = false;
+    toast('Ошибка сети');
+  }
+}
+
+async function loadLeaderboard() {
+  const res = await fetch('/api/leaderboard');
+  const data = await res.json();
+  const el = document.getElementById('leaderboard');
+  if (!data.leaderboard.length) {
+    el.textContent = 'Пока никто не играл.';
+    return;
+  }
+  el.innerHTML = data.leaderboard.map((u, i) => {
+    const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    const profitClass = u.netProfit >= 0 ? 'positive' : 'negative';
+    return `
+      <div class="lb-row">
+        <div class="lb-rank ${rankClass}">#${i + 1}</div>
+        <img class="lb-avatar" src="${avatarUrl(u.id, u.avatar)}">
+        <div class="lb-name">${u.username}</div>
+        <div class="lb-profit ${profitClass}">${u.netProfit >= 0 ? '+' : ''}${formatPK(u.netProfit)}</div>
+      </div>`;
+  }).join('');
+}
+
+async function refill() {
+  const res = await fetch('/api/refill', { method: 'POST' });
+  const data = await res.json();
+  if (res.ok) {
+    currentUser.balance = data.balance;
+    updateBalance();
+    toast('Получено 10 000 000 PK!');
+  }
+}
+
+async function logout() {
+  await fetch('/auth/logout', { method: 'POST' });
+  location.reload();
+}
+
+checkAuth();
+// Обновляем лидерборд каждые 15 сек
+setInterval(loadLeaderboard, 15000);
+</script>
+</body>
+</html>
